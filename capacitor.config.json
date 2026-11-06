@@ -1,0 +1,6 @@
+{
+  "appId": "com.warrantyvault.app",
+  "appName": "Warranty Vault",
+  "webDir": "www",
+  "android": { "backgroundColor": "#0f766e" }
+}
