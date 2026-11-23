@@ -61,14 +61,14 @@ jobs:
               }
               '''
               text = text.replace('    buildTypes {', signing + '\n    buildTypes {', 1)
-              build_types = re.search(r'buildTypes\\s*\\{', text)
-              if not build_types:
+              build_types_at = text.find('buildTypes {')
+              if build_types_at < 0:
                   raise SystemExit('Could not locate buildTypes block in app/build.gradle')
-              release_match = re.search(r'\\brelease\\s*\\{', text[build_types.end():])
-              if not release_match:
+              release_at = text.find('release {', build_types_at)
+              if release_at < 0:
                   raise SystemExit('Could not locate release build type in app/build.gradle')
-              insert_at = build_types.end() + release_match.end()
-              text = text[:insert_at] + '\\n            signingConfig signingConfigs.release' + text[insert_at:]
+              insert_at = release_at + len('release {')
+              text = text[:insert_at] + "\n            signingConfig signingConfigs.release" + text[insert_at:]
           gradle.write_text(text)
           PY
       - name: Build signed release APK (or debug until signing secrets are configured)
