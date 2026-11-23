@@ -32,12 +32,51 @@ jobs:
         run: |
           sed -i 's#</manifest>#    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.CAMERA"/>\n    <uses-feature android:name="android.hardware.camera" android:required="false"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
       - run: npx cap sync android
-      - name: Build debug APK
+      - name: Configure Android signing and version
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          python3 <<'PY'
+          import os, pathlib, re, base64
+          gradle = pathlib.Path('android/app/build.gradle')
+          text = gradle.read_text()
+          build_number = int(os.environ['BUILD_NUMBER'])
+          text, count = re.subn(r'versionCode\\s+\\d+', f'versionCode {build_number}', text, count=1)
+          if count != 1:
+              raise SystemExit('Could not locate Android versionCode in app/build.gradle')
+          if os.environ.get('KEYSTORE_BASE64'):
+              pathlib.Path('android/app/release-keystore.jks').write_bytes(base64.b64decode(os.environ['KEYSTORE_BASE64']))
+              signing = '''
+              signingConfigs {
+                  release {
+                      storeFile file("release-keystore.jks")
+                      storePassword System.getenv("KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("KEY_ALIAS")
+                      keyPassword System.getenv("KEY_PASSWORD")
+                  }
+              }
+              '''
+              text = text.replace('    buildTypes {', signing + '\\n    buildTypes {', 1)
+              text = text.replace('        release {', '        release {\\n            signingConfig signingConfigs.release', 1)
+          gradle.write_text(text)
+          PY
+      - name: Build signed release APK (or debug until signing secrets are configured)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            ./gradlew assembleRelease
+          else
+            echo "Signing secrets are not configured; producing a temporary debug APK."
+            ./gradlew assembleDebug
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: warranty-vault-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/debug/app-debug.apk
