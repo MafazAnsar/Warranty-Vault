@@ -125,7 +125,7 @@ async function syncNative(){const LN=PL('LocalNotifications');if(!NAT||!LN||!ls.
  for(const i of items)if(!i.completed)for(const r of [...(i.rem||[]),0]){const d=new Date(i.expiry+'T09:00');d.setDate(d.getDate()-r);if(d<=now)continue;
   out.push({id:hid(i.id+':'+r),channelId:'warranty',title:r?'Warranty ending soon':'Warranty expires today',body:i.name+(r?' expires in '+r+' day'+(r>1?'s':'')+' ('+fmt(i.expiry)+')':' today'),schedule:{at:d,allowWhileIdle:true}})}
  if(out.length)await LN.schedule({notifications:out})}catch(e){console.log(e)}}
-async async function dlf(n,t,m){const FS=PL('Filesystem'),SH=PL('Share');
+async function dlf(n,t,m){const FS=PL('Filesystem'),SH=PL('Share');
  if(NAT&&FS&&SH){try{await FS.writeFile({path:n,data:t,directory:'CACHE',encoding:'utf8'});const u=await FS.getUri({path:n,directory:'CACHE'});await SH.share({title:n,url:u.uri,dialogTitle:'Save or open with…'})}catch(e){alert('Export failed: '+(e.message||e))}return}
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:m}));a.download=n;a.click()}
 function settings(){const ok=NAT||'Notification'in window;
