@@ -60,30 +60,30 @@ applyTheme();
 const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
 const fd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const addM=(s,m)=>{const d=new Date(s+'T00:00'),n=d.getDate();d.setMonth(d.getMonth()+ +m);if(d.getDate()!==n)d.setDate(0);return fd(d)};
-const left=i=>Math.round((new Date(i.expiry+'T00:00')-today())/DAY);
-const st=i=>{const l=left(i);return l<0?['er','Expired']:l<=30?['wa',l+' d left']:['ok','Active']};
+const left=i=>i.completed?Infinity:Math.round((new Date(i.expiry+'T00:00')-today())/DAY);
+const st=i=>{if(i.completed)return ['ok','Completed'];const l=left(i);return l<0?['er','Expired']:l<=30?['wa',l+' d left']:['ok','Active']};
 const fmt=s=>new Date(s+'T00:00').toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
 const money=n=>n?Number(n).toLocaleString(undefined,{minimumFractionDigits:0})+' '+ls.get('cur','LKR'):'';
 const shrink=f=>new Promise(r=>{const i=new Image();i.onload=()=>{const s=Math.min(1,900/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*s;c.height=i.height*s;c.getContext('2d').drawImage(i,0,0,c.width,c.height);r(c.toDataURL('image/jpeg',.7))};i.src=URL.createObjectURL(f)});
 
 async function load(){items=await getAll();render();checkAlerts();syncNative()}
 function render(){
- const exp=items.filter(i=>left(i)<0).length,soon=items.filter(i=>left(i)>=0&&left(i)<=30).length;
+ const exp=items.filter(i=>!i.completed&&left(i)<0).length,soon=items.filter(i=>!i.completed&&left(i)>=0&&left(i)<=30).length;
  $('#stats').innerHTML=[['Total',items.length],['Active',items.length-exp-soon],['Expiring',soon],['Expired',exp]].map(x=>`<div class="stat"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('');
  $('#chips').innerHTML=['All',...categoryOptions()].map(c=>`<button class="chip ${c==cat?'on':''}" data-c="${esc(c)}">${esc(c)}</button>`).join('');
  const t=term.toLowerCase();
  const L=items.filter(i=>(cat=='All'||i.cat==cat)&&(!t||[i.name,i.brand,i.serial,i.store].join(' ').toLowerCase().includes(t))).sort((a,b)=>a.expiry<b.expiry?-1:1);
- $('#list').innerHTML=L.length?L.map(i=>{const [c,l]=st(i),tot=Math.max(1,(new Date(i.expiry)-new Date(i.pdate))/DAY),pc=Math.min(100,Math.max(0,(today()-new Date(i.pdate+'T00:00'))/DAY/tot*100));
-  return `<div class="card" data-id="${i.id}">${i.photos?.[0]?`<img class="th" src="${i.photos[0]}">`:`<div class="th">${i.cat.split(' ')[0]}</div>`}<div class="i"><b>${esc(i.name)}</b><div class="sm">${esc(i.brand||'')} · ${esc(i.type)} to ${fmt(i.expiry)}</div><span class="bd ${c}">${l}</span><div class="bar"><i style="width:${pc}%;background:var(--${c})"></i></div></div></div>`}).join(''):'<div class="empty">No items yet.<br>Tap + to add your first warranty.</div>';
+ $('#list').innerHTML=L.length?L.map(i=>{const [c,l]=st(i),tot=Math.max(1,(new Date(i.expiry)-new Date(i.pdate))/DAY),pc=i.completed?100:(i.pdate?Math.min(100,Math.max(0,(today()-new Date(i.pdate+'T00:00'))/DAY/tot*100)):0);
+  return `<div class="card" data-id="${i.id}">${i.photos?.[0]?`<img class="th" src="${i.photos[0]}">`:`<div class="th">${i.cat.split(' ')[0]}</div>`}<div class="i"><b>${esc(i.name)}</b><div class="sm">${esc(i.brand||'')} · ${esc(i.type)} ${i.completed?'completed':'due '+fmt(i.expiry)}</div><span class="bd ${c}">${l}</span><div class="bar"><i style="width:${pc}%;background:var(--${c})"></i></div></div></div>`}).join(''):'<div class="empty">No items yet.<br>Tap + to add your first warranty.</div>';
 }
-function alertsList(){return items.map(i=>({i,l:left(i)})).filter(x=>{const m=Math.max(...(x.i.rem?.length?x.i.rem:[0]));return x.l<=m&&x.l>=-14}).sort((a,b)=>a.l-b.l)}
+function alertsList(){return items.filter(i=>!i.completed).map(i=>({i,l:left(i)})).filter(x=>{const m=Math.max(...(x.i.rem?.length?x.i.rem:[0]));return x.l<=m&&x.l>=-14}).sort((a,b)=>a.l-b.l)}
 function checkAlerts(){
  const A=alertsList();$('#alerts').innerHTML=A.map(x=>`<div class="alert ${x.l<=7?'e':'w'}" data-id="${x.i.id}">${x.l<0?'⛔ Expired '+(-x.l)+' d ago':x.l==0?'⚠️ Expires TODAY':'⏰ '+x.l+' day'+(x.l>1?'s':'')+' left'}: <b>${esc(x.i.name)}</b></div>`).join('');
  if(NAT||!ls.get('notif',false)||!('Notification'in window)||Notification.permission!=='granted')return;
  A.forEach(x=>{const th=Math.min(...(x.i.rem||[]).filter(r=>r>=x.l),0>x.l?0:999);const k='n_'+x.i.id+'_'+(x.l<0?'x':th)+'_'+x.i.expiry;if(ls.get(k))return;ls.set(k,1);
   try{new Notification('Warranty alert',{body:x.i.name+(x.l<0?' warranty has expired':x.l==0?' expires today':' expires in '+x.l+' day(s)'),tag:k})}catch{}})}
 function form(i){
- const e=!!i;i=i||{name:'',cat:CATS[0],brand:'',serial:'',store:'',price:'',pdate:fd(new Date()),months:12,type:'Warranty',phone:'',notes:'',rem:[30,7,1],photos:[]};draft=JSON.parse(JSON.stringify(i));
+ const e=!!i;i=i||{name:'',cat:categoryOptions()[0],brand:'',serial:'',store:'',price:'',pdate:fd(new Date()),months:12,type:'Warranty',phone:'',notes:'',rem:[30,7,1],photos:[],history:[],completed:false};draft=JSON.parse(JSON.stringify(i));
  $('#dlg').innerHTML=`<h3 style="margin-top:0">${e?'Edit':'Add'} item</h3><form id="f">
  <label>Item name *</label><input name="name" required value="${esc(i.name)}">
  <div class="g2"><div><label>Category</label><select name="cat">${categoryOptions().map(c=>`<option ${c==i.cat?'selected':''}>${c}</option>`).join('')}</select></div>
@@ -104,11 +104,12 @@ function form(i){
 function phs(){$('#ph').innerHTML=draft.photos.map((p,n)=>`<div><img src="${p}"><u href="#" data-x="${n}">×</u></div>`).join('')}
 function detail(id){const i=items.find(x=>x.id==id);if(!i)return;const [c,l]=st(i);
  $('#dlg').innerHTML=`<h3 style="margin-top:0">${esc(i.name)} <span class="bd ${c}">${l}</span></h3>
- ${[['Category',i.cat],['Type',i.type],['Brand / model',i.brand],['Serial',i.serial],['Store',i.store],['Price',money(i.price)],['Purchased',fmt(i.pdate)],['Expires',fmt(i.expiry)],['Reminders',(i.rem||[]).map(r=>r+'d').join(', ')||'None']].filter(r=>r[1]).map(r=>`<div class="row"><span class="sm">${r[0]}</span><span>${esc(r[1])}</span></div>`).join('')}
- ${i.notes?`<p>${esc(i.notes)}</p>`:''}<div class="big">${(i.photos||[]).map(p=>`<img src="${p}">`).join('')}</div>
- <div>${i.phone?`<a class="btn p" href="tel:${esc(i.phone)}" style="text-decoration:none;display:inline-block">📞 Support</a>`:''}<button class="btn" id="ics">📅 Add to calendar</button><button class="btn" id="ed">Edit</button><button class="btn d" id="dl">Delete</button><button class="btn" id="cl">Close</button></div>`;
+ ${[['Category',i.cat],['Type',i.type],['Brand / model',i.brand],['Serial',i.serial],['Store',i.store],['Price',money(i.price)],['Purchased',fmt(i.pdate)],['Due date',i.expiry?fmt(i.expiry):''],['Repeat schedule',i.recurrence&&i.recurrence!=='none'?'Every '+i.recurrence+' month(s)':'Does not repeat'],['Reminders',(i.rem||[]).map(r=>r+'d').join(', ')||'None']].filter(r=>r[1]).map(r=>`<div class="row"><span class="sm">${r[0]}</span><span>${esc(r[1])}</span></div>`).join('')}
+ ${i.notes?`<p>${esc(i.notes)}</p>`:''}${(i.history||[]).length?`<h4>History</h4>${[...(i.history||[])].reverse().map(h=>`<div class="row"><span class="sm">${esc(h.action)} · ${fmt(h.date)}</span><span>${h.previousExpiry?esc(fmt(h.previousExpiry))+' → ':''}${h.nextExpiry?esc(fmt(h.nextExpiry)):'Completed'}${h.note?' · '+esc(h.note):''}</span></div>`).join('')}`:''}<div class="big">${(i.photos||[]).map(p=>`<img src="${p}">`).join('')}</div>
+ <div>${i.phone?`<a class="btn p" href="tel:${esc(i.phone)}" style="text-decoration:none;display:inline-block">📞 Support</a>`:''}<button class="btn" id="ics">📅 Add to calendar</button><button class="btn p" id="renew">＋ Record renewal / service</button><button class="btn" id="ed">Edit</button><button class="btn d" id="dl">Delete</button><button class="btn" id="cl">Close</button></div>`;
  $('#dlg').showModal();$('#cl').onclick=()=>$('#dlg').close();$('#ed').onclick=()=>form(i);
  $('#ics').onclick=()=>dlf('warranty-'+i.name.replace(/\W+/g,'_')+'.ics',ics([i]),'text/calendar');
+ $('#renew').onclick=async()=>{const action=prompt('What happened? (Renewed, Replaced, Serviced, Inspected, Completed)','Renewed');if(action===null||!action.trim())return;const step=Number(i.recurrence)||0;const suggested=step?addM(i.expiry,step):'';const next=prompt('Enter the next due date (YYYY-MM-DD). Leave blank to mark this record completed.',suggested);if(next===null)return;if(next.trim()&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(next.trim())){alert('Please enter the date as YYYY-MM-DD.');return}if(next.trim()&&isNaN(new Date(next.trim()+'T00:00').getTime())){alert('That date is not valid.');return}const note=prompt('Optional note (provider, reference, cost, etc.)','')||'';i.history=i.history||[];i.history.push({action:action.trim(),date:fd(new Date()),previousExpiry:i.expiry||'',nextExpiry:next.trim(),note});if(next.trim()){i.expiry=next.trim();i.completed=false}else{i.completed=true}await put(i);load();detail(i.id)};
  $('#dl').onclick=async()=>{if(confirm('Delete this item?')){await del(i.id);$('#dlg').close();load()}}}
 function ics(L){const z=s=>s.replace(/-/g,'');const e=s=>String(s).replace(/[,;\\]/g,m=>'\\'+m).replace(/\n/g,'\\n');
  return 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//WarrantyVault//EN\r\n'+L.map(i=>{const n=new Date(i.expiry+'T00:00');n.setDate(n.getDate()+1);
@@ -120,7 +121,7 @@ async function syncNative(){const LN=PL('LocalNotifications');if(!NAT||!LN||!ls.
  try{await LN.createChannel({id:'warranty',name:'Warranty alerts',importance:4,vibration:true});
  const p=await LN.getPending();if(p.notifications&&p.notifications.length)await LN.cancel({notifications:p.notifications.map(n=>({id:n.id}))});
  const out=[],now=Date.now();
- for(const i of items)for(const r of [...(i.rem||[]),0]){const d=new Date(i.expiry+'T09:00');d.setDate(d.getDate()-r);if(d<=now)continue;
+ for(const i of items)if(!i.completed)for(const r of [...(i.rem||[]),0]){const d=new Date(i.expiry+'T09:00');d.setDate(d.getDate()-r);if(d<=now)continue;
   out.push({id:hid(i.id+':'+r),channelId:'warranty',title:r?'Warranty ending soon':'Warranty expires today',body:i.name+(r?' expires in '+r+' day'+(r>1?'s':'')+' ('+fmt(i.expiry)+')':' today'),schedule:{at:d,allowWhileIdle:true}})}
  if(out.length)await LN.schedule({notifications:out})}catch(e){console.log(e)}}
 async function dlf(n,t,m){const FS=PL('Filesystem'),SH=PL('Share');
