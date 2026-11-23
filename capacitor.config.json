@@ -1,6 +1,8 @@
 {
   "appId": "com.warrantyvault.app",
-  "appName": "Warranty Vault",
+  "appName": "Renewly",
   "webDir": "www",
-  "android": { "backgroundColor": "#0f766e" }
+  "android": {
+    "backgroundColor": "#0f766e"
+  }
 }
