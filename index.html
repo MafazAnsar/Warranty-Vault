@@ -83,7 +83,7 @@ function checkAlerts(){
  A.forEach(x=>{const th=Math.min(...(x.i.rem||[]).filter(r=>r>=x.l),0>x.l?0:999);const k='n_'+x.i.id+'_'+(x.l<0?'x':th)+'_'+x.i.expiry;if(ls.get(k))return;ls.set(k,1);
   try{new Notification('Warranty alert',{body:x.i.name+(x.l<0?' warranty has expired':x.l==0?' expires today':' expires in '+x.l+' day(s)'),tag:k})}catch{}})}
 function form(i){
- const e=!!i;i=i||{name:'',cat:categoryOptions()[0],brand:'',serial:'',store:'',price:'',pdate:fd(new Date()),months:12,type:'Warranty',phone:'',notes:'',rem:[30,7,1],photos:[],history:[],completed:false};draft=JSON.parse(JSON.stringify(i));
+ const e=!!i;i=i||{name:'',cat:categoryOptions()[0],brand:'',serial:'',store:'',price:'',pdate:fd(new Date()),months:12,type:'Warranty',phone:'',notes:'',rem:[30,7,1],photos:[],docs:[],history:[],completed:false};draft=JSON.parse(JSON.stringify(i));
  $('#dlg').innerHTML=`<h3 style="margin-top:0">${e?'Edit':'Add'} item</h3><form id="f">
  <label>Item name *</label><input name="name" required value="${esc(i.name)}">
  <div class="g2"><div><label>Category</label><select name="cat">${categoryOptions().map(c=>`<option ${c==i.cat?'selected':''}>${c}</option>`).join('')}</select></div>
@@ -94,18 +94,19 @@ function form(i){
  <label>Support phone</label><input type="tel" name="phone" value="${esc(i.phone)}">
  <label>Notes (claim terms, conditions)</label><textarea name="notes" rows="2">${esc(i.notes)}</textarea>
  <label>Remind me before expiry</label><div class="rm">${REM.map(r=>`<label><input type="checkbox" name="rem" value="${r}" ${i.rem.includes(r)?'checked':''}>${r}d</label>`).join('')}</div>
- <label>Photos (product, receipt, warranty card)</label><div class="ph" id="ph"></div><input type="file" id="fl" accept="image/*" multiple>
+ <label>Photos (product, receipt, warranty card)</label><div class="ph" id="ph"></div><input type="file" id="fl" accept="image/*" multiple><label>Documents (PDFs and supporting files, up to 10 MB each)</label><div id="docList" class="sm"></div><input type="file" id="docFiles" accept="application/pdf,image/*" multiple>
  <div style="margin-top:8px"><button class="btn p">Save</button><button type="button" class="btn" id="cx">Cancel</button></div></form>`;
- phs();$('#dlg').showModal();
+ draft.docs=draft.docs||[];phs();$('#dlg').showModal();
  $('#cx').onclick=()=>$('#dlg').close();
  $('#fl').onchange=async e=>{for(const f of e.target.files)draft.photos.push(await shrink(f));e.target.value='';phs()};
+ $('#docFiles').onchange=async e=>{for(const f of e.target.files){if(f.size>10*1024*1024){alert(f.name+' exceeds the 10 MB limit.');continue}const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(f)});draft.docs.push({name:f.name,type:f.type||'application/octet-stream',data})}e.target.value='';phs()};
  $('#f').onsubmit=async e=>{e.preventDefault();const d=new FormData(e.target),o={...draft};['name','cat','type','brand','serial','pdate','store','price','phone','notes'].forEach(k=>o[k]=d.get(k)||'');
   o.months=+d.get('months')||0;o.recurrence=d.get('recurrence')||'none';o.rem=d.getAll('rem').map(Number);o.expiry=d.get('expiry')||addM(o.pdate,o.months||12);o.id=o.id||Date.now()+'';await put(o);$('#dlg').close();load()}}
-function phs(){$('#ph').innerHTML=draft.photos.map((p,n)=>`<div><img src="${p}"><u href="#" data-x="${n}">×</u></div>`).join('')}
+function phs(){$('#ph').innerHTML=draft.photos.map((p,n)=>`<div><img src="${p}"><u href="#" data-x="${n}">×</u></div>`).join('');const el=$('#docList');if(el)el.innerHTML=(draft.docs||[]).map((d,n)=>`<div class="row"><a href="${d.data}" download="${esc(d.name)}">📎 ${esc(d.name)}</a><button type="button" class="btn d" data-doc-remove="${n}">Remove</button></div>`).join('')||'No documents attached yet.'}
 function detail(id){const i=items.find(x=>x.id==id);if(!i)return;const [c,l]=st(i);
  $('#dlg').innerHTML=`<h3 style="margin-top:0">${esc(i.name)} <span class="bd ${c}">${l}</span></h3>
  ${[['Category',i.cat],['Type',i.type],['Brand / model',i.brand],['Serial',i.serial],['Store',i.store],['Price',money(i.price)],['Purchased',fmt(i.pdate)],['Due date',i.expiry?fmt(i.expiry):''],['Repeat schedule',i.recurrence&&i.recurrence!=='none'?'Every '+i.recurrence+' month(s)':'Does not repeat'],['Reminders',(i.rem||[]).map(r=>r+'d').join(', ')||'None']].filter(r=>r[1]).map(r=>`<div class="row"><span class="sm">${r[0]}</span><span>${esc(r[1])}</span></div>`).join('')}
- ${i.notes?`<p>${esc(i.notes)}</p>`:''}${(i.history||[]).length?`<h4>History</h4>${[...(i.history||[])].reverse().map(h=>`<div class="row"><span class="sm">${esc(h.action)} · ${fmt(h.date)}</span><span>${h.previousExpiry?esc(fmt(h.previousExpiry))+' → ':''}${h.nextExpiry?esc(fmt(h.nextExpiry)):'Completed'}${h.note?' · '+esc(h.note):''}</span></div>`).join('')}`:''}<div class="big">${(i.photos||[]).map(p=>`<img src="${p}">`).join('')}</div>
+ ${i.notes?`<p>${esc(i.notes)}</p>`:''}${(i.history||[]).length?`<h4>History</h4>${[...(i.history||[])].reverse().map(h=>`<div class="row"><span class="sm">${esc(h.action)} · ${fmt(h.date)}</span><span>${h.previousExpiry?esc(fmt(h.previousExpiry))+' → ':''}${h.nextExpiry?esc(fmt(h.nextExpiry)):'Completed'}${h.note?' · '+esc(h.note):''}</span></div>`).join('')}`:''}<div class="big">${(i.photos||[]).map(p=>`<img src="${p}">`).join('')}</div>${(i.docs||[]).length?`<h4>Attachments</h4>${i.docs.map(d=>`<div class="row"><a href="${d.data}" download="${esc(d.name)}">📎 ${esc(d.name)}</a></div>`).join('')}`:''}
  <div>${i.phone?`<a class="btn p" href="tel:${esc(i.phone)}" style="text-decoration:none;display:inline-block">📞 Support</a>`:''}<button class="btn" id="ics">📅 Add to calendar</button><button class="btn p" id="renew">＋ Record renewal / service</button><button class="btn" id="ed">Edit</button><button class="btn d" id="dl">Delete</button><button class="btn" id="cl">Close</button></div>`;
  $('#dlg').showModal();$('#cl').onclick=()=>$('#dlg').close();$('#ed').onclick=()=>form(i);
  $('#ics').onclick=()=>dlf('warranty-'+i.name.replace(/\W+/g,'_')+'.ics',ics([i]),'text/calendar');
@@ -146,7 +147,7 @@ function settings(){const ok=NAT||'Notification'in window;
  $('#ex').onclick=()=>dlf('warranty-backup-'+fd(new Date())+'.json',JSON.stringify(items),'application/json');
  $('#im').onchange=async e=>{try{const a=JSON.parse(await e.target.files[0].text());for(const i of a)await put(i);alert('Restored '+a.length+' items');$('#dlg').close();load()}catch{alert('Invalid backup file')}}}
 document.addEventListener('click',e=>{const t=e.target;
- if(t.dataset.c){cat=t.dataset.c;render()}else if(t.dataset.x!==undefined){e.preventDefault();draft.photos.splice(+t.dataset.x,1);phs()}
+ if(t.dataset.c){cat=t.dataset.c;render()}else if(t.dataset.x!==undefined){e.preventDefault();draft.photos.splice(+t.dataset.x,1);phs()}else if(t.dataset.docRemove!==undefined){draft.docs.splice(+t.dataset.docRemove,1);phs()}
  else{const c=t.closest('[data-id]');if(c)detail(c.dataset.id)}});
 $('#q').oninput=e=>{term=e.target.value;render()};$('#add').onclick=()=>form();$('#gear').onclick=settings;
 $('#bell').onclick=()=>{const A=alertsList();alert(A.length?A.map(x=>(x.l<0?'EXPIRED: ':x.l+'d: ')+x.i.name).join('\n'):'No alerts. All warranties are healthy ✅')};
