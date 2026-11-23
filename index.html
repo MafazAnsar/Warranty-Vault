@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0f766e"><title>Warranty Vault</title>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#172b4d"><meta name="color-scheme" content="dark light"><title>Warranty Vault</title>
 <style>
 :root{--bg:#f4f6f8;--card:#fff;--tx:#14202b;--mu:#667585;--pr:#0f766e;--ok:#15803d;--wa:#b45309;--er:#b91c1c;--bd:#e2e8ee}
 @media(prefers-color-scheme:dark){:root{--bg:#10171d;--card:#1a232b;--tx:#e8eef3;--mu:#93a2b0;--pr:#2dd4bf;--ok:#4ade80;--wa:#fbbf24;--er:#f87171;--bd:#2b3742}}
@@ -29,7 +29,7 @@ dialog{border:0;border-radius:16px;padding:16px;width:min(94vw,560px);max-height
 .ph{display:flex;gap:6px;flex-wrap:wrap}.ph div{position:relative}.ph img{width:80px;height:80px;object-fit:cover;border-radius:8px}.ph u{position:absolute;top:0;right:0;background:#000a;color:#fff;border-radius:50%;width:20px;height:20px;text-align:center;text-decoration:none;font-size:13px}
 .big img{width:100%;border-radius:10px;margin:4px 0}.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rm label{display:inline-flex;align-items:center;gap:4px;margin-right:10px;color:var(--tx);font-size:14px}.rm input{width:auto;margin:0}
 .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd)}.empty{text-align:center;color:var(--mu);padding:40px 10px}
-</style></head><body>
+body[data-theme="dark"]{--bg:#0b1220;--card:#141f30;--tx:#e8eef8;--mu:#9aabc0;--pr:#4f8cff;--ok:#22c58b;--wa:#f5b942;--er:#f16b75;--bd:#26364b;color-scheme:dark}\nbody[data-theme="light"]{--bg:#f3f6fb;--card:#fff;--tx:#172338;--mu:#68778c;--pr:#2864d7;--ok:#16845c;--wa:#b7791f;--er:#c2414b;--bd:#dce4ef;color-scheme:light}\nbody[data-theme="dark"] header{color:#f5f8ff;background:linear-gradient(115deg,#172b4d,#263b68)}\nbody[data-theme="light"] header{color:#fff;background:linear-gradient(115deg,#2455a6,#3978d8)}\nbody[data-theme="dark"] .chip.on,body[data-theme="dark"] .btn.p,body[data-theme="dark"] .fab,body[data-theme="light"] .chip.on,body[data-theme="light"] .btn.p,body[data-theme="light"] .fab{color:#fff}\nbody[data-theme="dark"] .stat,body[data-theme="dark"] .card,body[data-theme="dark"] dialog{box-shadow:0 5px 18px #0002}\nbody[data-theme="dark"] input,body[data-theme="dark"] select,body[data-theme="dark"] textarea{border-color:#30435d}\nbody[data-theme="light"] .alert.w{background:#fff4d6;color:#784b0b}\nbody[data-theme="light"] .alert.e{background:#ffe5e7;color:#8d2630}\n</style></head><body>
 <header><h1>🛡️ Warranty Vault</h1><div><button id="bell" title="Alerts">🔔</button><button id="gear" title="Settings">⚙️</button></div></header>
 <main><div id="alerts"></div><div class="stats" id="stats"></div>
 <input id="q" placeholder="Search name, brand, serial, store…"><div class="chips" id="chips"></div><div id="list"></div></main>
@@ -42,7 +42,7 @@ const ls={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.par
 const DB=new Promise((res,rej)=>{const r=indexedDB.open('wv',1);r.onupgradeneeded=()=>r.result.createObjectStore('items',{keyPath:'id'});r.onsuccess=()=>res(r.result);r.onerror=rej});
 const tx=async(m,f)=>{const d=await DB;return new Promise((res,rej)=>{const t=d.transaction('items',m);const r=f(t.objectStore('items'));t.oncomplete=()=>res(r.result);t.onerror=rej})};
 const getAll=()=>tx('readonly',s=>s.getAll()),put=i=>tx('readwrite',s=>s.put(i)),del=id=>tx('readwrite',s=>s.delete(id));
-let items=[],cat='All',term='',draft=null;
+let items=[],cat='All',term='',draft=null;\nfunction applyTheme(){const t=ls.get('theme','dark');document.body.dataset.theme=t==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;}\napplyTheme();
 const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
 const fd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const addM=(s,m)=>{const d=new Date(s+'T00:00'),n=d.getDate();d.setMonth(d.getMonth()+ +m);if(d.getDate()!==n)d.setDate(0);return fd(d)};
@@ -73,9 +73,9 @@ function form(i){
  $('#dlg').innerHTML=`<h3 style="margin-top:0">${e?'Edit':'Add'} item</h3><form id="f">
  <label>Item name *</label><input name="name" required value="${esc(i.name)}">
  <div class="g2"><div><label>Category</label><select name="cat">${CATS.map(c=>`<option ${c==i.cat?'selected':''}>${c}</option>`).join('')}</select></div>
- <div><label>Type</label><select name="type">${['Warranty','Guarantee','Extended warranty','Service plan'].map(c=>`<option ${c==i.type?'selected':''}>${c}</option>`).join('')}</select></div>
+ <div><label>Type</label><select name="type">${['Warranty','Guarantee','Extended warranty','Service plan','Expiry','Renewal','Replacement','Inspection','Subscription','Membership','Certificate','Licence','Permit'].map(c=>`<option ${c==i.type?'selected':''}>${c}</option>`).join('')}</select></div>
  <div><label>Brand / model</label><input name="brand" value="${esc(i.brand)}"></div><div><label>Serial / IMEI</label><input name="serial" value="${esc(i.serial)}"></div>
- <div><label>Purchase date *</label><input type="date" name="pdate" required value="${i.pdate}"></div><div><label>Duration (months) *</label><input type="number" name="months" min="1" max="600" required value="${i.months}"></div>
+ <div><label>Start / purchase date</label><input type="date" name="pdate" value="${i.pdate}"></div><div><label>Expiry / due date *</label><input type="date" name="expiry" required value="${i.expiry||addM(i.pdate,i.months)}"></div><div><label>Duration (months, optional)</label><input type="number" name="months" min="1" max="600" value="${i.months||''}"></div><div><label>Repeat schedule</label><select name="recurrence">${[['none','Does not repeat'],['1','Every month'],['3','Every 3 months'],['6','Every 6 months'],['12','Every year'],['24','Every 2 years']].map(([v,t])=>`<option value="${v}" ${(i.recurrence||'none')==v?'selected':''}>${t}</option>`).join('')}</select></div>
  <div><label>Store / seller</label><input name="store" value="${esc(i.store)}"></div><div><label>Price</label><input type="number" name="price" min="0" value="${esc(i.price)}"></div></div>
  <label>Support phone</label><input type="tel" name="phone" value="${esc(i.phone)}">
  <label>Notes (claim terms, conditions)</label><textarea name="notes" rows="2">${esc(i.notes)}</textarea>
@@ -86,7 +86,7 @@ function form(i){
  $('#cx').onclick=()=>$('#dlg').close();
  $('#fl').onchange=async e=>{for(const f of e.target.files)draft.photos.push(await shrink(f));e.target.value='';phs()};
  $('#f').onsubmit=async e=>{e.preventDefault();const d=new FormData(e.target),o={...draft};['name','cat','type','brand','serial','pdate','store','price','phone','notes'].forEach(k=>o[k]=d.get(k)||'');
-  o.months=+d.get('months');o.rem=d.getAll('rem').map(Number);o.expiry=addM(o.pdate,o.months);o.id=o.id||Date.now()+'';await put(o);$('#dlg').close();load()}}
+  o.months=+d.get('months')||0;o.recurrence=d.get('recurrence')||'none';o.rem=d.getAll('rem').map(Number);o.expiry=d.get('expiry')||addM(o.pdate,o.months||12);o.id=o.id||Date.now()+'';await put(o);$('#dlg').close();load()}}
 function phs(){$('#ph').innerHTML=draft.photos.map((p,n)=>`<div><img src="${p}"><u href="#" data-x="${n}">×</u></div>`).join('')}
 function detail(id){const i=items.find(x=>x.id==id);if(!i)return;const [c,l]=st(i);
  $('#dlg').innerHTML=`<h3 style="margin-top:0">${esc(i.name)} <span class="bd ${c}">${l}</span></h3>
@@ -116,11 +116,11 @@ function settings(){const ok=NAT||'Notification'in window;
  $('#dlg').innerHTML=`<h3 style="margin-top:0">Settings & backup</h3>
  <p class="sm">${NAT?'Alerts are scheduled on your phone (9:00 AM on each reminder day) and fire even when the app is closed.':'Alerts show in-app when opened. For alerts when closed, export reminders to your calendar.'}</p>
  <label><input type="checkbox" id="nt" style="width:auto" ${ls.get('notif',false)?'checked':''} ${ok?'':'disabled'}> Enable device notifications</label><br>
- <label>Currency</label><input id="cu" value="${esc(ls.get('cur','LKR'))}" maxlength="5">
+ <label>Appearance</label><select id="th"><option value="dark" ${ls.get('theme','dark')==='dark'?'selected':''}>Dark</option><option value="light" ${ls.get('theme','dark')==='light'?'selected':''}>Light</option><option value="system" ${ls.get('theme','dark')==='system'?'selected':''}>Follow device</option></select><label>Currency</label><input id="cu" value="${esc(ls.get('cur','LKR'))}" maxlength="5">
  <button class="btn p" id="ia">📅 Export ALL reminders to calendar (.ics)</button>
  <button class="btn" id="ex">⬇️ Backup (JSON)</button><label class="btn" style="display:inline-block">⬆️ Restore<input type="file" id="im" accept=".json" hidden></label>
  <button class="btn" id="cl">Close</button>`;
- $('#dlg').showModal();$('#cl').onclick=()=>{ls.set('cur',$('#cu').value||'LKR');$('#dlg').close();render()};
+ $('#dlg').showModal();$('#cl').onclick=()=>{ls.set('cur',$('#cu').value||'LKR');ls.set('theme',$('#th').value);applyTheme();$('#dlg').close();render()};
  $('#nt').onchange=async e=>{if(e.target.checked){let g;if(NAT)g=(await PL('LocalNotifications').requestPermissions()).display==='granted';else g=(await Notification.requestPermission())==='granted';e.target.checked=g}ls.set('notif',e.target.checked);checkAlerts();syncNative()};
  $('#ia').onclick=()=>dlf('all-warranties.ics',ics(items),'text/calendar');
  $('#ex').onclick=()=>dlf('warranty-backup-'+fd(new Date())+'.json',JSON.stringify(items),'application/json');
