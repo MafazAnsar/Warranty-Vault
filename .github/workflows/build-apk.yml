@@ -60,8 +60,8 @@ jobs:
                   }
               }
               '''
-              text = text.replace('    buildTypes {', signing + '\\n    buildTypes {', 1)
-              text = text.replace('        release {', '        release {\\n            signingConfig signingConfigs.release', 1)
+              text = text.replace('    buildTypes {', signing + '\n    buildTypes {', 1)
+              text = text.replace('        release {', '        release {\n            signingConfig signingConfigs.release', 1)
           gradle.write_text(text)
           PY
       - name: Build signed release APK (or debug until signing secrets are configured)
