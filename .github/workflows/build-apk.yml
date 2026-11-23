@@ -28,6 +28,21 @@ jobs:
           NODE
       - run: npm install
       - run: npx cap add android
+      - name: Install Renewly launcher icon
+        run: |
+          mkdir -p android/app/src/main/res/drawable
+          cp android-assets/renewly_icon.xml android/app/src/main/res/drawable/renewly_icon.xml
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('android/app/src/main/AndroidManifest.xml')
+          s = p.read_text()
+          s, count = re.subn(r'android:icon="[^"]+"', 'android:icon="@drawable/renewly_icon"', s, count=1)
+          if count != 1:
+              raise SystemExit('Could not locate application icon attribute in AndroidManifest.xml')
+          s = re.sub(r'android:roundIcon="[^"]+"', 'android:roundIcon="@drawable/renewly_icon"', s)
+          p.write_text(s)
+          PY
       - name: Add permissions
         run: |
           sed -i 's#</manifest>#    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.CAMERA"/>\n    <uses-feature android:name="android.hardware.camera" android:required="false"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
