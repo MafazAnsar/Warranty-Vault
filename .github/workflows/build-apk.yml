@@ -45,7 +45,7 @@ jobs:
           gradle = pathlib.Path('android/app/build.gradle')
           text = gradle.read_text()
           build_number = int(os.environ['BUILD_NUMBER'])
-          text, count = re.subn(r'versionCode\\s+\\d+', f'versionCode {build_number}', text, count=1)
+          text, count = re.subn(r'versionCode\s+\d+', f'versionCode {build_number}', text, count=1)
           if count != 1:
               raise SystemExit('Could not locate Android versionCode in app/build.gradle')
           if os.environ.get('KEYSTORE_BASE64'):
@@ -65,10 +65,12 @@ jobs:
           gradle.write_text(text)
           PY
       - name: Build signed release APK (or debug until signing secrets are configured)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           cd android
           chmod +x gradlew
-          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+          if [ -n "$KEYSTORE_BASE64" ]; then
             ./gradlew assembleRelease
           else
             echo "Signing secrets are not configured; producing a temporary debug APK."
