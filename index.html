@@ -119,6 +119,22 @@ function ics(L){const z=s=>s.replace(/-/g,'');const e=s=>String(s).replace(/[,;\
   return `BEGIN:VEVENT\r\nUID:${i.id}@warrantyvault\r\nDTSTAMP:${z(fd(new Date()))}T000000Z\r\nDTSTART;VALUE=DATE:${z(i.expiry)}\r\nDTEND;VALUE=DATE:${z(fd(n))}\r\nSUMMARY:${e(i.type+' expires: '+i.name)}\r\nDESCRIPTION:${e([i.brand,i.serial&&'S/N '+i.serial,i.store,i.phone&&'Support '+i.phone].filter(Boolean).join(' | '))}\r\n`+(i.rem||[]).map(r=>`BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:${e(i.name)} warranty expires in ${r} day(s)\r\nTRIGGER:-P${r}DT-9H\r\nEND:VALARM\r\n`).join('')+'END:VEVENT\r\n'}).join('')+'END:VCALENDAR'}
 const NAT=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 const PL=n=>window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins[n];
+const App=PL('App');
+if(NAT&&App){
+ let lastBack=0,backToastTimer;
+ App.addListener('backButton',()=>{
+  const dlg=$('#dlg');
+  if(dlg&&dlg.open){dlg.close();lastBack=0;return}
+  const now=Date.now();
+  if(now-lastBack<2000){lastBack=0;App.exitApp();return}
+  lastBack=now;
+  let toast=$('#backExitToast');
+  if(!toast){toast=document.createElement('div');toast.id='backExitToast';toast.textContent='Press back again to exit';toast.style.cssText='position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9999;background:#26364b;color:#fff;padding:11px 18px;border-radius:24px;box-shadow:0 3px 14px #0006;font:14px system-ui;white-space:nowrap';document.body.appendChild(toast)}
+  toast.hidden=false;
+  clearTimeout(backToastTimer);
+  backToastTimer=setTimeout(()=>{toast.hidden=true},1800);
+ });
+}
 const hid=s=>{let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)%2000000000+1};
 async function syncNative(){const LN=PL('LocalNotifications');if(!NAT||!LN||!ls.get('notif',false))return;
  try{await LN.createChannel({id:'warranty',name:'Warranty alerts',importance:4,vibration:true});
